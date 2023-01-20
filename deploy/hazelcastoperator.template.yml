@@ -1,0 +1,61 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  template: dedalus-hazelcastoperator-template
+  app: hazelcast-dedalus
+metadata:
+  annotations:
+    description: |-
+      Hazelcast Platform Operator definition.
+      For more information about using this template, including OpenShift considerations, see http://ci-git.noemalife.loc:8888/paolo.merci/hazelcast-operator/src/master/README.md
+    iconClass: icon-d4center
+    tags: dedalus-hazelcastoperator,dedalus
+  name: dedalus-hazelcastoperator
+objects:
+# :::
+# ::: It needed by the Hazelcast Operator object
+# :::
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: hazelcast-operator-group
+    labels:
+      app: hazelcast-dedalus
+  spec:
+    targetNamespaces:
+    - ${NAMESPACE}
+# :::
+# ::: Hazelcast Operator installation
+# :::
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: hazelcast-operator
+    labels:
+      app: hazelcast-dedalus
+    # AllNamespaces install mode usageis not supported.
+    # Specify the relevant single namespace for SingleNamespace install mode usage.
+    # look for installModes by command: 'oc get packagemanifest hazelcast-platform-operator -o yaml'
+    namespace: ${NAMESPACE}
+  spec:
+    # Name of the channel to subscribe to.
+    # look for the channel version available by command: 'oc get packagemanifest hazelcast-platform-operator -o yaml'
+    channel: alpha
+    # Set the approval strategy to Manual in case your specified version is superseded by a later version in the catalog.
+    # This plan prevents an automatic upgrade to a later version and requires manual approval before the starting CSV can complete the installation.
+    installPlanApproval: Manual
+    # Name of the Operator to subscribe to
+    name: hazelcast-platform-operator
+    # Name of the catalog source that provides the Operator.
+    # you can choose among 'redhat-operators', 'certified-operators' and 'community-operators'
+    source: certified-operators
+    # Namespace of the catalog source. Use openshift-marketplace for the default OperatorHub catalog sources.
+    sourceNamespace: openshift-marketplace
+    # Set a specific version of an Operator CSV
+    startingCSV: hazelcast-platform-operator.v5.2.0
+parameters:
+- name: NAMESPACE
+  displayName: Namespace where the grafana Operator will be installed in
+  description: Type the Namespace where the grafana Operator will be installed in
+  required: true
+  value:

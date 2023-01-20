@@ -1,0 +1,88 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  template: dedalus-hazelcastcluster-template
+  app: hazelcast-dedalus
+metadata:
+  annotations:
+    description: |-
+      Hazelcast Cluster definition it needs Hazelcasr Platform Operator installed to work.
+      For more information about using this template, including OpenShift considerations, see http://ci-git.noemalife.loc:8888/paolo.merci/hazelcast-operator/src/master/README.md
+    iconClass: icon-d4center
+    tags: dedalus-hazelcastoperator,dedalus
+  name: dedalus-hazelcastcluster
+objects:
+# :::
+# ::: ServiceAccount
+# ::: It will create the service account with the aws token to download the images from Dedalus repository
+# :::
+- apiVersion: v1
+  kind: ServiceAccount
+  labels:
+    app: hazelcast-dedalus
+  metadata:
+    name: ${HAZ_SERVER_NAME}
+    namespace: ${NAMESPACE}
+  imagePullSecrets:
+    - name: ${AWS_TOKEN}
+  secrets:
+    - name: ${AWS_TOKEN}
+# :::
+# ::: Hazelcast Cluster installation
+# ::: It is possible to configure persistent storage for the cluster itself
+# ::: for now it is out of the scope
+# :::
+- apiVersion: hazelcast.com/v1alpha1
+  kind: Hazelcast
+  metadata:
+    name: ${HAZ_SERVER_NAME}
+    namespace: ${NAMESPACE}
+    labels:
+      app: hazelcast-dedalus
+  spec:
+    clusterName: ${HAZ_CLUSTER_NAME}
+    clusterSize: 3
+    imagePullPolicy: IfNotPresent
+    repository: 350801433917.dkr.ecr.eu-west-1.amazonaws.com/enterprise-architect/support
+    version: hazelcast-5.1.1-slim
+# :::
+# ::: RoleBinding
+# ::: It will set permission to the ServiceAccount default to use autodiscovery.
+# ::: Internal use case fhir
+# :::
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: hazelcast-cluster-role-binding
+    namespace: ${NAMESPACE}
+    labels:
+      app: hazelcast-dedalus
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: hazelcast-cluster-role
+  subjects:
+    - kind: ServiceAccount
+      name: default
+      namespace: ${NAMESPACE}
+parameters:
+- name: NAMESPACE
+  displayName: Namespace where the grafana Operator will be installed in
+  description: Type the Namespace where the grafana Operator will be installed in
+  required: true
+  value:
+- name: HAZ_SERVER_NAME
+  displayName: Hazelcast StatefulSet Name
+  description: Type the name for the StatefulSet created by the operator
+  required: true
+  value: hazelcast-node
+- name: HAZ_CLUSTER_NAME
+  displayName: Hazelcast Cluster Name
+  description: Type the Name for the Hazelcast Cluster created by the members of the statefulset
+  required: true
+  value: x1v1fhir_terminology
+- name: AWS_TOKEN
+  displayName: Secret for AWS token
+  description: Secret used to store the AWS token. default value for Openshift 4.x
+  required: true
+  value: aws-ecr-token
